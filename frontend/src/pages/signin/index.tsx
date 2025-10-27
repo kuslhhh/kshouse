@@ -5,6 +5,8 @@ import { Input } from '../../components/ui/input'
 import { useForm } from "react-hook-form"
 import type { SubmitHandler } from "react-hook-form"
 import { yupResolver } from "@hookform/resolvers/yup"
+import Cookies from "universal-cookie"
+import { StreamVideoClient, type User } from "@stream-io/video-react-sdk"
 import * as yup from "yup"
 
 interface FormValues {
@@ -13,6 +15,8 @@ interface FormValues {
 }
 
 export default function SignIn() {
+
+   const cookie = new Cookies()
 
    const schema = yup.object().shape({
       username: yup.string().required("Username is required").matches(/^[a-zA-Z0-9_.@$]+$/, "Invalid Username"),
@@ -25,10 +29,51 @@ export default function SignIn() {
       formState: { errors }
    } = useForm<FormValues>({ resolver: yupResolver(schema) })
 
-   const onSubmit: SubmitHandler<FormValues> = (data) => {
+   const onSubmit: SubmitHandler<FormValues> = async (data) => {
       const { name, username } = data
+      const image = `https://avatar.vercel.sh/${encodeURIComponent(username)}.svg`;
 
-      console.log(name, username);
+
+      const response = await fetch(`${import.meta.env.VITE_BASE_URL}/auth/signin`, {
+         method: "POST",
+         headers: {
+            "Content-Type": "application/json"
+         },
+         body: JSON.stringify({
+            username,
+            name,
+            image
+         })
+      });
+
+      if (!response) {
+         alert("Some error occured while sign in ")
+      }
+
+      const responseData = await response.json()
+
+      const user:User = {
+         id: username,
+         name: name
+      } 
+
+      const client = new StreamVideoClient({
+         apiKey: import.meta.env.VITE_API_KEY,
+         user,
+         token: responseData.token
+      })
+
+      const expires = new Date
+      expires.setDate(expires.getDate() + 1)
+      cookie.set("token", responseData.token, {
+         expires,
+      })
+      cookie.set("username", responseData.username, {
+         expires,
+      })
+      cookie.set("name", responseData.name, {
+         expires,
+      })
    }
 
    return (
