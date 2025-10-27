@@ -8,6 +8,8 @@ import { yupResolver } from "@hookform/resolvers/yup"
 import Cookies from "universal-cookie"
 import { StreamVideoClient, type User } from "@stream-io/video-react-sdk"
 import * as yup from "yup"
+import { useUser } from '@/lib/userContext'
+import { useNavigate } from 'react-router-dom'
 
 interface FormValues {
    username: string;
@@ -17,6 +19,8 @@ interface FormValues {
 export default function SignIn() {
 
    const cookie = new Cookies()
+   const { setClient, setUser } = useUser()
+   const navigate = useNavigate()
 
    const schema = yup.object().shape({
       username: yup.string().required("Username is required").matches(/^[a-zA-Z0-9_.@$]+$/, "Invalid Username"),
@@ -52,16 +56,19 @@ export default function SignIn() {
 
       const responseData = await response.json()
 
-      const user:User = {
+      const user: User = {
          id: username,
          name: name
-      } 
+      }
 
-      const client = new StreamVideoClient({
+      const myClient = new StreamVideoClient({
          apiKey: import.meta.env.VITE_API_KEY,
          user,
          token: responseData.token
       })
+
+      setClient(myClient)
+      setUser({ username, name })
 
       const expires = new Date
       expires.setDate(expires.getDate() + 1)
@@ -74,6 +81,8 @@ export default function SignIn() {
       cookie.set("name", responseData.name, {
          expires,
       })
+
+      navigate("/")
    }
 
    return (
