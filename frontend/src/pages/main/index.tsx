@@ -4,8 +4,9 @@ import { Label } from '../../components/ui/label'
 import { Input } from '../../components/ui/input'
 import { useUser } from "@/lib/userContext";
 import { StreamVideo } from "@stream-io/video-react-sdk";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import React, { useState } from 'react';
+import CryptoJS from "crypto-js"
 
 interface NewRoom {
    name: string;
@@ -14,8 +15,15 @@ interface NewRoom {
 
 export default function Main() {
 
-   const { client, user } = useUser()
+   const { client, user, setCall } = useUser()
    const [newRoom, SetNewRoom] = useState<NewRoom>({ name: "", description: "" })
+
+   const navigate = useNavigate()
+
+   const hashRoomname = (roomName: string): string => {
+      const hash = CryptoJS.SHA256(roomName).toString(CryptoJS.enc.Base64);
+      return hash.replace(/[^a-zA-z0-9_-]/g, "")
+   }
 
    if (!client) {
       return <Navigate to="/signin" />
@@ -27,7 +35,7 @@ export default function Main() {
          return
       }
 
-      const call = client.call("audio_room", name)
+      const call = client.call("audio_room", hashRoomname(name))
       await call.join({
          create: true,
          data: {
@@ -38,6 +46,8 @@ export default function Main() {
             }
          }
       })
+      setCall(call)
+      navigate("/room")
    }
    return (
       <StreamVideo client={client}>
@@ -50,7 +60,7 @@ export default function Main() {
                      Create your own Room
                   </CardDescription>
                   <CardAction>
-                     <Button variant="link">Room</Button>
+                     {/* <Button variant="link">Room</Button> */}
                   </CardAction>
                </CardHeader>
 
@@ -58,7 +68,7 @@ export default function Main() {
                   <CardContent>
                      <div className="flex flex-col gap-6">
                         <div className="grid gap-2">
-                           <Label htmlFor="Username">Room Name:</Label>
+                           <Label htmlFor="Username">Room Name</Label>
                            <Input
                               onChange={(event: React.ChangeEvent<HTMLInputElement>) => SetNewRoom((prev) => ({ ...prev, name: event.target.value }))}
                               type="text"
